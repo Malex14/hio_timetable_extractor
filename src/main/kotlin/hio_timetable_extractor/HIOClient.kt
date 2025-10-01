@@ -2,6 +2,7 @@ package de.mbehrmann.hio_timetable_extractor
 
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.*
 import io.ktor.client.plugins.cookies.*
 import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
@@ -15,6 +16,9 @@ import org.jsoup.nodes.Element
 class HIOClient(val instance: String) {
     val httpClient = HttpClient(CIO) {
         install(HttpCookies)
+        install(HttpTimeout) {
+            requestTimeoutMillis = 60 * 1000
+        }
 
         followRedirects = true
 
@@ -72,6 +76,8 @@ class HIOClient(val instance: String) {
         action: String,
         render: Boolean = true
     ) {
+        println("doing action $action ($source) on ${instance}/qisserver/pages/${page}?_flowId=${flow}&_flowExecutionKey=${flowExecutionKey}")
+
         val response = httpClient.submitForm(
             url = "${instance}/qisserver/pages/${page}",
             formParameters = parameters {
@@ -103,11 +109,14 @@ class HIOClient(val instance: String) {
         flowExecutionKey: String,
         expectedStatus: Int? = 200
     ): Document {
+        println("getting page: ${instance}/qisserver/pages/${page}?_flowId=${flow}&_flowExecutionKey=${flowExecutionKey}")
+
         val response = httpClient.get("${instance}/qisserver/pages/${page}") {
             url {
                 parameter("_flowId", flow)
                 parameter("_flowExecutionKey", flowExecutionKey)
             }
+
         }
 
         if (expectedStatus == null || response.status.value == expectedStatus) {
