@@ -16,17 +16,20 @@ val GERMAN_DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.M
 suspend fun main() {
     val client = HIOClient(HIO_INSTANCE)
 
-    //val authToken = getSessionAuthToken(client)
-    //val (_,tree) = getAndExpandCourseTree(client, authToken)
-
+    //val (semester, tree) = getAndExpandCourseTree(client)
+    //Files.writeString(Path("/tmp/tree.html"), tree.toString())
+    val semester = "file"
     val tree = Jsoup.parse(Path("/home/malte/Downloads/tree.html")).getElementsByTag("tbody").first()!!
 
     val (periodId, courseCatalog) = parseTree(tree)
 
-    addModuleInfoToCourseCatalog(client, courseCatalog, periodId)
+    //addModuleInfoToCourseCatalog(client, courseCatalog, periodId)
     addModulePartInfoToCourseCatalog(client, courseCatalog, periodId)
 
-    Files.writeString(Path("/tmp/courseCatalog.json"), JSON_SERIALIZER.encodeToString(courseCatalog))
+    Files.writeString(
+        Path("/tmp/courseCatalog_${semester.replace(Regex("[ /\\\\]"), "_")}.json"),
+        JSON_SERIALIZER.encodeToString(courseCatalog)
+    )
 
 }
 
@@ -60,14 +63,16 @@ private suspend fun addModulePartInfoToCourseCatalog(client: HIOClient, courseCa
             sws = getText("Semesterwochenstunden")?.toDouble()
             enrollmentTimeRanges = getText("Zeitraum")
         }
-        for (parallelGroup in document.getElementsByAttributeValueMatching(
+        val parallelGroups = document.getElementsByAttributeValueMatching(
             "id",
             Regex("^detailViewData:tabContainer:term-planning-container:parallelGroupSchedule_\\d+$").toPattern()
-        )) {
+        )
+        for (parallelGroup in parallelGroups) {
             val titleElem = parallelGroup.getElementsByTag("h3").first() ?: throw NoSuchElementException()
             val (shortName, name, groupNumber) = parseParallelGroupTitle(
                 titleElem.ownText(),
-                part
+                part,
+                parallelGroups.size == 1
             )
 
             val boxContentElem =
@@ -84,7 +89,7 @@ private suspend fun addModulePartInfoToCourseCatalog(client: HIOClient, courseCa
                 name,
                 groupNumber,
                 getText("Semesterwochenstunden", labels)?.toDouble() ?: throw NoSuchElementException(),
-                getText("Lehrsprache", labels) ?: throw NoSuchElementException(),
+                getText("Lehrsprache", labels),
                 labels["Verantwortliche/-r"]
                     ?.nextElementSibling()
                     ?.firstElementChild()
@@ -174,14 +179,19 @@ private fun parseParallelGroupDate(
 private fun parseParallelGroupTitle(
     title: String,
     modulePart: ModulePart,
+    isOnlyGroup: Boolean,
 ): Triple<String?, String?, Int?> {
+    println(modulePart.shortName + " - " + modulePart.name)
+
     val groupNumberRegex = Regex("(\\d+)\\. Parallelgruppe")
     val groupNumber = groupNumberRegex.find(title)?.groupValues?.getOrNull(1)?.toInt()
 
     var shortName: String? = null
     var name: String? = null
     when {
-        title == modulePart.name -> {
+        title == modulePart.name || title == modulePart.shortName -> {
+            println("plain: $title")
+
             name = modulePart.name
             shortName = modulePart.shortName
         }
@@ -208,24 +218,39 @@ private fun parseParallelGroupTitle(
         }
 
         title.startsWith(modulePart.name) -> { // faculty inf without shortName
+            println("inf wo: $title")
+
             name = modulePart.name
             shortName = modulePart.shortName
         }
 
         title.matches(Regex("\\d{2}_+${modulePart.shortName}.*")) -> { // faculty inf with shortName
-            val shortNameAndNameRegex = Regex("(\\d{2}_+${modulePart.shortName}) ?(.*?) \\(?1")
+            println("inf w0: $title")
+
+            val shortNameAndNameRegex = Regex("(\\d{2}_+${modulePart.shortName}) ?(.*?) ?\\(?1")
             shortNameAndNameRegex.find(title)?.groupValues?.let {
                 shortName = "${modulePart.shortName}/${it[1].substringBefore('_')}"
                 name = it[2]
             }
         }
 
+        title.matches(Regex("${modulePart.shortName}/\\d{2}.*")) -> { // faculty emi
+            println("emi: $title")
+
+            shortName = title.substringBefore(' ')
+            name = modulePart.name
+        }
+
         title.matches(Regex("\\d{2} ${modulePart.name}.*${modulePart.number}.*")) -> { // faculty inf with shortName, but different ;)
+            println("inf w1: $title")
+
             shortName = "${modulePart.shortName}/${title.substringBefore(' ')}"
             name = title.substringAfter(' ').substringBefore(" (")
         }
 
         title.matches(Regex("(\\(online\\) )?\\d{2}( \\(online\\))? (${modulePart.shortName}|.*${modulePart.number}).*")) -> { // faculty inf with shortName. another variant :(
+            println("inf w2: $title")
+
             shortName = if (title.startsWith("(online)")) {
                 val start = "(online) ".length
                 "${modulePart.shortName}/${title.substring(start, start + 2)}"
@@ -236,15 +261,13 @@ private fun parseParallelGroupTitle(
         }
 
         title.matches(Regex("\\d{2}\\+\\d{2} .*?")) -> {
+            println("minf: $title")
             shortName = "${modulePart.shortName}/${title.take(5)}"
             name = modulePart.name
         }
 
-        title.matches(
-            Regex(
-                "\\d+\\.?G - .*"
-            )
-        ) -> {
+        title.matches(Regex("\\d+\\.?G - .*")) -> {
+            println("ful: $title")
             var dotIndex = title.indexOf('.')
             if (dotIndex < 0) dotIndex = Int.MAX_VALUE
 
@@ -253,10 +276,20 @@ private fun parseParallelGroupTitle(
             name = modulePart.name
         }
 
+        title.matches(Regex("\\d*\\.? ?Termingruppe.*")) -> {
+            shortName = if (isOnlyGroup) {
+                modulePart.shortName
+            } else {
+                "${modulePart.shortName}/${groupNumber.toString().padStart(2, '0')}"
+            }
+            name = modulePart.name
+        }
+
         // parallel group in "Fakultät Soziale Arbeit und Kindheitspädagogik"
         title.startsWith("BABE ")
                 || title.startsWith("MASA ")
                 || title.matches(Regex("((M ?(\\d+\\.)*(\\d|[A-Z])+ ?\\+ ?)*M ?(\\d+\\.)*(\\d|[A-Z])+( ?\\(gekoppelt\\))?) ?(.*?)( ?\\(\\d+. Par.*|$)")) -> {
+            println("sauk: $title")
             val shortNameAndNameRegex =
                 Regex("((?:M? ?(?:\\d+\\.)*(?:\\d|[A-Z])+ ?\\+ ?)*M? ?(?:\\d+\\.)*(?:\\d|[A-Z])+(?: ?\\(gekoppelt\\))?) ?(.*?)(?: ?\\(\\d+. Par|$)")
             val cleanedTitle = if (title.startsWith("BABE ") || title.startsWith("MASA ")) {
@@ -280,16 +313,20 @@ private fun parseParallelGroupTitle(
         }
 
         else -> { // all other strange entries
+            println("unbekannt: $title")
+
             name = modulePart.name
             shortName = if (title[0].isDigit() && title[1].isDigit()) {
                 "${modulePart.shortName}/${title.take(2)}"
-            } else if (groupNumber != null) {
+            } else if (groupNumber != null && !isOnlyGroup) {
                 "${modulePart.shortName}/${groupNumber.toString().padStart(2, '0')}"
             } else {
                 modulePart.shortName
             }
         }
     }
+
+    println("'$shortName' - '$name' - '$groupNumber'")
 
     return Triple(shortName, name, groupNumber)
 }
@@ -367,13 +404,12 @@ private fun parseTree(tree: Element): Pair<Int, CourseCatalog> {
                     moduleGroups = moduleGroup.subGroups
                 }
 
-                if (nodeType == "Teilmodul") { // Submodul
-                    var subModules = courseCatalog.modules[moduleGroup?.modules[iterator.previous()]]?.subModules
-                        ?: throw IllegalStateException()
+                var subModules = courseCatalog.modules[moduleGroup?.modules[iterator.previous()]]?.subModules
+                if (nodeType == "Teilmodul" && subModules != null) { // Submodul (außer, wenn statt Konto aus Versehen Teilmodul ausgewählt wurde
                     iterator.next() // correct iterator position
 
                     for (i in iterator) {
-                        subModules = subModules[i]?.subModules ?: break
+                        subModules = subModules!![i]?.subModules ?: break
                     }
 
                     subModules[nodeId.last()] = SubModule(
@@ -419,7 +455,7 @@ private fun parseTree(tree: Element): Pair<Int, CourseCatalog> {
                 val type = ModulePartType.fromHIOString(split.last())
 
                 val moduleId = moduleGroup.modules[iterator.previous()]
-                val module = courseCatalog.modules[moduleId] ?: throw NoSuchElementException()
+                val module = courseCatalog.modules[moduleId] ?: continue // TODO: throw NoSuchElementException()
 
                 if (iterator.nextIndex() == nodeId.size - 2) { // there are no submodules
                     module.parts[nodeId.last()] = id
