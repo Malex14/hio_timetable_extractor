@@ -95,10 +95,11 @@ data class ParallelGroup(
     var name: String?,
     var groupNumber: Int?,
     var sws: Double,
-    var language: String,
+    var language: String?,
     var instructors: List<String>?,
     var maxParticipantCount: Int?,
-    var dates: MutableList<ParallelGroupDate>
+    var dates: MutableList<ParallelGroupDate>,
+    var originalTitle: String,
 )
 
 @Serializable

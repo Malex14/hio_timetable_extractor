@@ -96,7 +96,8 @@ private suspend fun addModulePartInfoToCourseCatalog(client: HIOClient, courseCa
                     ?.children()
                     ?.map { it.text() },
                 getText("Maximale Anzahl Teilnehmer/-innen")?.toInt(),
-                dateTableBody?.let { parseParallelGroupDate(it, courseCatalog) } ?: mutableListOf()
+                dateTableBody?.let { parseParallelGroupDate(it, courseCatalog) } ?: mutableListOf(),
+                titleElem.ownText()
             )
 
             part.parallelGroups.add(group)
