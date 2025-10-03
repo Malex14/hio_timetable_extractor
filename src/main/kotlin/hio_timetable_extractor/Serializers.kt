@@ -13,6 +13,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
+val GERMAN_DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.uuuu")
 val JSON_SERIALIZER: Json = Json {
     serializersModule = SerializersModule {
         contextual(LocalDateSerializer)
@@ -21,19 +22,17 @@ val JSON_SERIALIZER: Json = Json {
 }
 
 object LocalDateSerializer : KSerializer<LocalDate> {
-    val germanDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.uuuu")
-
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor(
         "de.mbehrmann.hio_timetable_extractor.LocalDate",
         PrimitiveKind.STRING
     )
 
     override fun serialize(encoder: Encoder, value: LocalDate) {
-        encoder.encodeString(germanDateFormatter.format(value))
+        encoder.encodeString(GERMAN_DATE_FORMATTER.format(value))
     }
 
     override fun deserialize(decoder: Decoder): LocalDate {
-        return LocalDate.parse(decoder.decodeString(), germanDateFormatter)
+        return LocalDate.parse(decoder.decodeString(), GERMAN_DATE_FORMATTER)
     }
 }
 
