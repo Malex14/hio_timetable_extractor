@@ -131,7 +131,7 @@ enum class ParallelGroupDateRhythm {
     WEEKLY,
     BI_WEEKLY,
     TRI_WEEKLY,
-    MONTHLY,
+    QUAD_WEEKLY,
     BLOCK,
     UNKNOWN;
 
@@ -141,13 +141,21 @@ enum class ParallelGroupDateRhythm {
             "wöchentlich" -> WEEKLY
             "14-täglich" -> BI_WEEKLY
             "dreiwöchentlich" -> TRI_WEEKLY
-            "vierwöchentlich" -> MONTHLY
+            "vierwöchentlich" -> QUAD_WEEKLY
             "Blockveranstaltung" -> BLOCK
             else -> {
                 println("unbekanntes intervall $str")
                 UNKNOWN
             }
         }
+    }
+
+    fun asDays(): Long? = when (this) {
+        WEEKLY -> 1 * 7
+        BI_WEEKLY -> 2 * 7
+        TRI_WEEKLY -> 3 * 7
+        QUAD_WEEKLY -> 4 * 7
+        else -> null
     }
 }
 
@@ -188,6 +196,7 @@ enum class ModuleInterval {
     IRREGULAR,
     ONLY_DURING_WINTER,
     ONLY_DURING_SUMMER,
+    YEARLY,
     UNKNOWN;
 
     companion object {
@@ -196,6 +205,7 @@ enum class ModuleInterval {
             "Unregelmäßig" -> IRREGULAR
             "nur im Wintersemester" -> ONLY_DURING_WINTER
             "nur im Sommersemester" -> ONLY_DURING_SUMMER
+            "jährlich" -> YEARLY
             else -> {
                 println(str)
                 UNKNOWN
