@@ -178,7 +178,7 @@ private fun processModulePart(
             val name = modulePart.shortName?.let { "$it (${modulePart.name})" } ?: modulePart.name
 
             directory.events.add(DirectoryEvent(id, name))
-            events[id] = generateEventsFromParallelGroup(parallelGroup, id, name, generateDescription(), courseCatalog)
+            events[id] = generateEventsFromParallelGroup(parallelGroup, id, name, courseCatalog)
         }
 
         else -> {
@@ -189,7 +189,7 @@ private fun processModulePart(
                 ?: modulePart.name // TODO: schöner machen   // pg integrieren
 
                 partDirectory.events.add(DirectoryEvent(id, name))
-                events[id] = generateEventsFromParallelGroup(group, id, name, generateDescription(), courseCatalog)
+                events[id] = generateEventsFromParallelGroup(group, id, name, courseCatalog)
             }
             directory.subDirectories.add(partDirectory)
         }
@@ -200,7 +200,6 @@ private fun generateEventsFromParallelGroup(
     parallelGroup: ParallelGroup,
     id: String,
     name: String,
-    description: String,
     courseCatalog: CourseCatalog
 ): List<Event> {
     val events = mutableListOf<Event>()
@@ -216,7 +215,7 @@ private fun generateEventsFromParallelGroup(
                         name = name,
                         location = pdDate.room?.let { generateRoomString(courseCatalog.rooms[it]!!) }
                             ?: "(kein Raum angegeben)",
-                        description = description,
+                        description = generateDescription(parallelGroup, pdDate),
                         startTime = pdDate.startDate.atTime(pdDate.startTime),
                         endTime = pdDate.endDate.atTime(pdDate.endTime),
                         cancelled = pdDate.cancellations.isNotEmpty()
@@ -233,7 +232,7 @@ private fun generateEventsFromParallelGroup(
                             name = name,
                             location = pdDate.room?.let { generateRoomString(courseCatalog.rooms[it]!!) }
                                 ?: "(kein Raum angegeben)",
-                            description = description,
+                            description = generateDescription(parallelGroup, pdDate),
                             startTime = currentDate.atTime(pdDate.startTime),
                             endTime = currentDate.atTime(pdDate.endTime),
                             cancelled = pdDate.cancellations.contains(currentDate)
@@ -248,17 +247,49 @@ private fun generateEventsFromParallelGroup(
     return events
 }
 
-private fun generateDescription(): String {
-    return "Bla bla"
+private fun generateDescription(parallelGroup: ParallelGroup, pgDate: ParallelGroupDate): String {
+    return buildString {
+        if (pgDate.instructors.isNotEmpty()) {
+            append(
+                "Dozent${if (pgDate.instructors.size != 1) "en" else ""}: ${
+                    pgDate.instructors.joinToString(", ")
+                }\n"
+            )
+        } else if ((parallelGroup.instructors?.size ?: 0) > 0) {
+            append(
+                "Dozent${if (parallelGroup.instructors!!.size != 1) "en" else ""}: ${
+                    parallelGroup.instructors!!.joinToString(", ")
+                }\n"
+            )
+        }
+
+        if (parallelGroup.groupNumber != null) {
+            append("Parallelgruppe: ${parallelGroup.groupNumber}\n")
+        }
+
+        when {
+            pgDate.estimatedParticipantCount != null && parallelGroup.maxParticipantCount != null -> {
+                append("Teilnehmer/-innen: ${pgDate.estimatedParticipantCount} / ${parallelGroup.maxParticipantCount}\n")
+            }
+
+            pgDate.estimatedParticipantCount != null -> {
+                append("Teilnehmer/-innen: ${pgDate.estimatedParticipantCount}")
+            }
+
+            parallelGroup.maxParticipantCount != null -> {
+                append("Max. Anzahl von Teilnehmer/-innen: ${parallelGroup.maxParticipantCount}\n")
+            }
+        }
+
+        append("Rhythmus: ${pgDate.rhythm}\n")
+        append("\nOriginaler Titel: ${parallelGroup.originalTitle}")
+    }
 }
 
-private fun generateRoomString(room: Room): String {
-    return "${room.number}, ${room.address}"
-}
+private fun generateRoomString(room: Room): String = "${room.number}, ${room.address}"
 
-private fun generateId(modulePart: ModulePart, parallelGroup: ParallelGroup): String {
-    return "${modulePart.id}_${parallelGroup.groupNumber ?: "x"}"
-}
+private fun generateId(modulePart: ModulePart, parallelGroup: ParallelGroup): String =
+    "${modulePart.id}_${parallelGroup.groupNumber ?: "x"}"
 
 private fun getSubmoduleModulePartCount(subModule: SubModule): Int {
     var count = subModule.parts.size

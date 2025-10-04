@@ -21,17 +21,6 @@ class HIOClient(val instance: String) {
         }
 
         followRedirects = true
-
-        /*engine {
-            proxy = ProxyBuilder.http("http://192.168.178.32:8080/")
-            https {
-                trustManager = object : X509TrustManager {
-                    override fun getAcceptedIssuers(): Array<X509Certificate?> = arrayOf()
-                    override fun checkClientTrusted(certs: Array<X509Certificate?>?, authType: String?) {}
-                    override fun checkServerTrusted(certs: Array<X509Certificate?>?, authType: String?) {}
-                }
-            }
-        }*/
     }
     val authToken = runBlocking { getSessionAuthToken() }
 
@@ -141,6 +130,8 @@ class HIOClient(val instance: String) {
         val flow = "detailView-flow"
 
         for ((unitId, unit) in unitMap) {
+            println("getting details page for unit $unitId")
+
             val (flowExecutionKey, document) = startFlow(
                 flow,
                 listOf(

@@ -157,6 +157,18 @@ enum class ParallelGroupDateRhythm {
         QUAD_WEEKLY -> 4 * 7
         else -> null
     }
+
+    override fun toString(): String {
+        return when (this) {
+            ONE_TIME -> "Einzeltermin"
+            WEEKLY -> "wöchentlich"
+            BI_WEEKLY -> "zweiwöchentlich"
+            TRI_WEEKLY -> "dreiwöchentlich"
+            QUAD_WEEKLY -> "vierwöchentlich"
+            BLOCK -> "Block"
+            UNKNOWN -> "unbekannt"
+        }
+    }
 }
 
 enum class ModulePartType {

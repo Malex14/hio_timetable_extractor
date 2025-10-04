@@ -13,26 +13,25 @@ suspend fun main() {
     HIOClient(HIO_INSTANCE)
 
     val semester = "Vorlesungsverzeichnis für Wintersemester 2025 2026"
+    //val tree = Jsoup.parse(Path("/tmp/tree.html")).getElementsByTag("tbody").first()!!
     //val (semester, tree) = getAndExpandCourseTree(client)
-    /*Files.writeString(Path("/tmp/tree.html"), tree.toString())
-    //val tree = Jsoup.parse(Path("/home/malte/Downloads/tree.html")).getElementsByTag("tbody").first()!!
+    //Files.writeString(Path("/tmp/tree.html"), tree.toString())
+    /*
+        val (periodId, courseCatalog) = parseTree(tree)
 
-    val (periodId, courseCatalog) = parseTree(tree)
+        addModuleInfoToCourseCatalog(client, courseCatalog, periodId)
+        addModulePartInfoToCourseCatalog(client, courseCatalog, periodId)
 
-    addModuleInfoToCourseCatalog(client, courseCatalog, periodId)
-    addModulePartInfoToCourseCatalog(client, courseCatalog, periodId)
-
-    Files.writeString(
-        Path("/tmp/courseCatalog_${semester.replace(Regex("[ /\\\\]"), "_")}.json"),
-        JSON_SERIALIZER.encodeToString(courseCatalog)
-    )*/
+        Files.writeString(
+            Path("/tmp/courseCatalog_${semester.replace(Regex("[ /\\\\]"), "_")}.json"),
+            JSON_SERIALIZER.encodeToString(courseCatalog)
+        )*/
 
     val courseCatalogStr =
         Files.readString(Path("/home/malte/Downloads/courseCatalog_${semester.replace(Regex("[ /\\\\]"), "_")}.json"))
     val courseCatalog = JSON_SERIALIZER.decodeFromString<CourseCatalog>(courseCatalogStr)
 
     writeDirectoryAndEventFiles(Path("/tmp/export"), courseCatalog)
-
 }
 
 private suspend fun addModuleInfoToCourseCatalog(client: HIOClient, courseCatalog: CourseCatalog, periodId: Int) {
@@ -158,8 +157,8 @@ private fun parseParallelGroupDate(
                 remarks = getColText("column7").takeIf(String::isNotBlank),
                 instructors = row.getElementsByClass("column8")
                     .first()
-                    ?.getElementById("li")
-                    ?.map(Element::ownText) ?: listOf(),
+                    ?.getElementsByTag("li")
+                    ?.map { it.text().trim() } ?: listOf(),
                 room = roomId
             )
         )
