@@ -1,6 +1,5 @@
 package de.mbehrmann.hio_timetable_extractor
 
-import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import java.nio.file.Files
 import java.time.LocalDate
@@ -11,22 +10,28 @@ const val HIO_INSTANCE = "https://myhaw.haw-hamburg.de:443" // without tailing s
 
 
 suspend fun main() {
-    val client = HIOClient(HIO_INSTANCE)
+    HIOClient(HIO_INSTANCE)
 
+    val semester = "Vorlesungsverzeichnis für Wintersemester 2025 2026"
     //val (semester, tree) = getAndExpandCourseTree(client)
-    //Files.writeString(Path("/tmp/tree.html"), tree.toString())
-    val semester = "file"
-    val tree = Jsoup.parse(Path("/home/malte/Downloads/tree.html")).getElementsByTag("tbody").first()!!
+    /*Files.writeString(Path("/tmp/tree.html"), tree.toString())
+    //val tree = Jsoup.parse(Path("/home/malte/Downloads/tree.html")).getElementsByTag("tbody").first()!!
 
     val (periodId, courseCatalog) = parseTree(tree)
 
-    //addModuleInfoToCourseCatalog(client, courseCatalog, periodId)
+    addModuleInfoToCourseCatalog(client, courseCatalog, periodId)
     addModulePartInfoToCourseCatalog(client, courseCatalog, periodId)
 
     Files.writeString(
         Path("/tmp/courseCatalog_${semester.replace(Regex("[ /\\\\]"), "_")}.json"),
         JSON_SERIALIZER.encodeToString(courseCatalog)
-    )
+    )*/
+
+    val courseCatalogStr =
+        Files.readString(Path("/home/malte/Downloads/courseCatalog_${semester.replace(Regex("[ /\\\\]"), "_")}.json"))
+    val courseCatalog = JSON_SERIALIZER.decodeFromString<CourseCatalog>(courseCatalogStr)
+
+    writeDirectoryAndEventFiles(Path("/tmp/export"), courseCatalog)
 
 }
 
@@ -126,7 +131,7 @@ private fun parseParallelGroupDate(
             roomId = roomIdRegex.find(roomLinkElem.attribute("href")?.value ?: "")?.groupValues[1]?.toInt()
                 ?: throw NoSuchElementException()
             val roomStr = roomLinkElem.text()
-            val roomStrRegex = Regex("(.*?) \\((.*?)(?: \\((.*?)\\))?\\)")
+            val roomStrRegex = Regex("(.*?) \\((.*?)(?: \\((.*?)\\))?\\)") // TODO: Ulmenliet ist anders!
             val groupValues = roomStrRegex.find(roomStr)?.groupValues ?: throw NoSuchElementException()
 
             courseCatalog.rooms[roomId] = Room(
@@ -215,7 +220,7 @@ private fun parseParallelGroupTitle(
         title.matches(Regex("\\d{2}_+${modulePart.shortName}.*")) -> { // faculty inf with shortName
             println("inf w0: $title")
 
-            val shortNameAndNameRegex = Regex("(\\d{2}_+${modulePart.shortName}) ?(.*?) ?\\(?1")
+            val shortNameAndNameRegex = Regex("(\\d{2}_+${modulePart.shortName}) ?(.*?) ?\\(?")
             shortNameAndNameRegex.find(title)?.groupValues?.let {
                 shortName = "${modulePart.shortName}/${it[1].substringBefore('_')}"
                 name = it[2]
