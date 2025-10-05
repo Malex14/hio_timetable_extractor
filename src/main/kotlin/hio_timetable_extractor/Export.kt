@@ -15,12 +15,11 @@ data class Event(
     val description: String,
     val startTime: @Contextual LocalDateTime,
     val endTime: @Contextual LocalDateTime,
-    val cancelled: Boolean,
 )
 
 @Serializable
 data class Directory(
-    val name: String?,
+    val name: String,
     val subDirectories: MutableList<Directory> = mutableListOf(),
     val events: MutableList<DirectoryEvent> = mutableListOf(),
 )
@@ -209,23 +208,7 @@ private fun generateEventsFromParallelGroup(
     for (pdDate in parallelGroup.dates) {
         when (pdDate.rhythm) {
             ParallelGroupDateRhythm.ONE_TIME, ParallelGroupDateRhythm.BLOCK, ParallelGroupDateRhythm.UNKNOWN -> {
-                events.add(
-                    Event(
-                        id = id,
-                        name = name,
-                        location = pdDate.room?.let { generateRoomString(courseCatalog.rooms[it]!!) }
-                            ?: "(kein Raum angegeben)",
-                        description = generateDescription(parallelGroup, pdDate),
-                        startTime = pdDate.startDate.atTime(pdDate.startTime),
-                        endTime = pdDate.endDate.atTime(pdDate.endTime),
-                        cancelled = pdDate.cancellations.isNotEmpty()
-                    )
-                )
-            }
-
-            else -> {
-                var currentDate = pdDate.startDate
-                do {
+                if (pdDate.cancellations.isEmpty()) {
                     events.add(
                         Event(
                             id = id,
@@ -233,11 +216,29 @@ private fun generateEventsFromParallelGroup(
                             location = pdDate.room?.let { generateRoomString(courseCatalog.rooms[it]!!) }
                                 ?: "(kein Raum angegeben)",
                             description = generateDescription(parallelGroup, pdDate),
-                            startTime = currentDate.atTime(pdDate.startTime),
-                            endTime = currentDate.atTime(pdDate.endTime),
-                            cancelled = pdDate.cancellations.contains(currentDate)
-                        ))
+                            startTime = pdDate.startDate.atTime(pdDate.startTime),
+                            endTime = pdDate.endDate.atTime(pdDate.endTime),
+                        )
+                    )
+                }
+            }
 
+            else -> {
+                var currentDate = pdDate.startDate
+                do {
+                    if (!pdDate.cancellations.contains(currentDate)) {
+                        events.add(
+                            Event(
+                                id = id,
+                                name = name,
+                                location = pdDate.room?.let { generateRoomString(courseCatalog.rooms[it]!!) }
+                                    ?: "(kein Raum angegeben)",
+                                description = generateDescription(parallelGroup, pdDate),
+                                startTime = currentDate.atTime(pdDate.startTime),
+                                endTime = currentDate.atTime(pdDate.endTime),
+                            )
+                        )
+                    }
                     currentDate = currentDate.plusDays(pdDate.rhythm.asDays()!!)
                 } while (!currentDate.isAfter(pdDate.endDate))
             }
