@@ -173,7 +173,7 @@ private fun processModulePart(
 
         1 -> {
             val parallelGroup = modulePart.parallelGroups.first()
-            val id = generateId(modulePart, parallelGroup)
+            val id = generateId(modulePart, parallelGroup, true)
             val name = modulePart.shortName?.let { "$it (${modulePart.name})" } ?: modulePart.name
 
             directory.events.add(DirectoryEvent(id, name))
@@ -289,8 +289,8 @@ private fun generateDescription(parallelGroup: ParallelGroup, pgDate: ParallelGr
 
 private fun generateRoomString(room: Room): String = "${room.number}, ${room.address}"
 
-private fun generateId(modulePart: ModulePart, parallelGroup: ParallelGroup): String =
-    "${modulePart.id}_${parallelGroup.groupNumber ?: "x"}"
+private fun generateId(modulePart: ModulePart, parallelGroup: ParallelGroup, isOnlyGroup: Boolean = false): String =
+    "${modulePart.id}_${parallelGroup.groupNumber ?: if (isOnlyGroup) 1 else "x"}"
 
 private fun getSubmoduleModulePartCount(subModule: SubModule): Int {
     var count = subModule.parts.size
