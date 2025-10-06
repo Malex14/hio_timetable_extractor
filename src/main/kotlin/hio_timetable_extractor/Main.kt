@@ -219,7 +219,7 @@ private fun parseParallelGroupTitle(
         title.matches(Regex("\\d{2}_+${modulePart.shortName}.*")) -> { // faculty inf with shortName
             println("inf w0: $title")
 
-            val shortNameAndNameRegex = Regex("(\\d{2}_+${modulePart.shortName}) ?(.*?) ?\\(?")
+            val shortNameAndNameRegex = Regex("(\\d{2}_+${modulePart.shortName}) ?(.*?) ?\\(")
             shortNameAndNameRegex.find(title)?.groupValues?.let {
                 shortName = "${modulePart.shortName}/${it[1].substringBefore('_')}"
                 name = it[2]
