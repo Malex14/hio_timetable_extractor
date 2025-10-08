@@ -1,0 +1,11 @@
+services:
+  hio_timetable_extractor:
+    build: .
+    environment:
+      HIO_INSTANCE: "https://myhaw.haw-hamburg.de"
+      EXPORT_DIR: "/export"
+    volumes:
+      - "export:/export"
+
+volumes:
+  export:

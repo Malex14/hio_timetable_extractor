@@ -1,37 +1,38 @@
 package de.mbehrmann.hio_timetable_extractor
 
 import org.jsoup.nodes.Element
-import java.nio.file.Files
 import java.time.LocalDate
 import java.time.LocalTime
 import kotlin.io.path.Path
-
-const val HIO_INSTANCE = "https://myhaw.haw-hamburg.de:443" // without tailing slash
-
+import kotlin.io.path.notExists
+import kotlin.system.exitProcess
 
 suspend fun main() {
-    HIOClient(HIO_INSTANCE)
+    val envs = System.getenv()
+    val hioInstance = envs["HIO_INSTANCE"]
+    if (hioInstance == null || hioInstance.isBlank()) {
+        println("'HIO_INSTANCE' environment variable not set")
+        exitProcess(1)
+    }
+    val exportDir = envs["EXPORT_DIR"]
+    if (exportDir == null) {
+        println("'EXPORT_DIR' environment variable not set")
+        exitProcess(2)
+    }
+    val exportPath = Path(exportDir)
+    if (exportPath.notExists()) {
+        println("'EXPORT_DIR' doesn't exist")
+        exitProcess(3)
+    }
+    val client = HIOClient(hioInstance)
 
-    val semester = "Vorlesungsverzeichnis für Wintersemester 2025 2026"
-    //val tree = Jsoup.parse(Path("/tmp/tree.html")).getElementsByTag("tbody").first()!!
-    //val (semester, tree) = getAndExpandCourseTree(client)
-    //Files.writeString(Path("/tmp/tree.html"), tree.toString())
-    /*
-        val (periodId, courseCatalog) = parseTree(tree)
+    val (_, tree) = getAndExpandCourseTree(client)
+    val (periodId, courseCatalog) = parseTree(tree)
 
-        addModuleInfoToCourseCatalog(client, courseCatalog, periodId)
-        addModulePartInfoToCourseCatalog(client, courseCatalog, periodId)
+    addModuleInfoToCourseCatalog(client, courseCatalog, periodId)
+    addModulePartInfoToCourseCatalog(client, courseCatalog, periodId)
 
-        Files.writeString(
-            Path("/tmp/courseCatalog_${semester.replace(Regex("[ /\\\\]"), "_")}.json"),
-            JSON_SERIALIZER.encodeToString(courseCatalog)
-        )*/
-
-    val courseCatalogStr =
-        Files.readString(Path("/home/malte/Downloads/courseCatalog_${semester.replace(Regex("[ /\\\\]"), "_")}.json"))
-    val courseCatalog = JSON_SERIALIZER.decodeFromString<CourseCatalog>(courseCatalogStr)
-
-    writeDirectoryAndEventFiles(Path("/tmp/export"), courseCatalog)
+    writeDirectoryAndEventFiles(exportPath, courseCatalog)
 }
 
 private suspend fun addModuleInfoToCourseCatalog(client: HIOClient, courseCatalog: CourseCatalog, periodId: Int) {

@@ -42,6 +42,8 @@ tasks.jar {
     configurations.compileClasspath.get().forEach {
         from(if (it.isDirectory) it else zipTree(it))
     }
+
+    archiveFileName.set("${project.name}.jar")
 }
 
 kotlin {
