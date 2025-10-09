@@ -1,8 +1,13 @@
 package de.mbehrmann.hio_timetable_extractor
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.launch
 import org.jsoup.nodes.Element
 import java.time.LocalDate
 import java.time.LocalTime
+import kotlin.concurrent.fixedRateTimer
 import kotlin.io.path.Path
 import kotlin.io.path.notExists
 import kotlin.system.exitProcess
@@ -24,15 +29,27 @@ suspend fun main() {
         println("'EXPORT_DIR' doesn't exist")
         exitProcess(3)
     }
+    val period = envs["PERIOD"]
+    if (period == null || period.toLongOrNull() == null) {
+        println("'PERIOD' is not set or invalid")
+        exitProcess(4)
+    }
+
     val client = HIOClient(hioInstance)
 
-    val (_, tree) = getAndExpandCourseTree(client)
-    val (periodId, courseCatalog) = parseTree(tree)
+    val scope = CoroutineScope(currentCoroutineContext())
+    fixedRateTimer(name = "main loop", period = period.toLong() * 1000 * 60 * 60) {
+        scope.launch(Dispatchers.Default) {
+            val (_, tree) = getAndExpandCourseTree(client)
+            val (periodId, courseCatalog) = parseTree(tree)
 
-    addModuleInfoToCourseCatalog(client, courseCatalog, periodId)
-    addModulePartInfoToCourseCatalog(client, courseCatalog, periodId)
+            addModuleInfoToCourseCatalog(client, courseCatalog, periodId)
+            addModulePartInfoToCourseCatalog(client, courseCatalog, periodId)
+            writeDirectoryAndEventFiles(exportPath, courseCatalog)
 
-    writeDirectoryAndEventFiles(exportPath, courseCatalog)
+            println("waiting for next iteration")
+        }
+    }
 }
 
 private suspend fun addModuleInfoToCourseCatalog(client: HIOClient, courseCatalog: CourseCatalog, periodId: Int) {
