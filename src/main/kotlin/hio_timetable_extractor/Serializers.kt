@@ -30,7 +30,6 @@ val JSON_PASCAL_CASE_SERIALIZER: Json = Json {
         contextual(LocalDateTimeSerializer)
     }
     namingStrategy = PascalCaseNamingStrategy
-    prettyPrint = true
 }
 
 object LocalDateSerializer : KSerializer<LocalDate> {
