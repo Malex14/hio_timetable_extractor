@@ -17,7 +17,7 @@ class HIOClient(val instance: String) {
     val httpClient = HttpClient(CIO) {
         install(HttpCookies)
         install(HttpTimeout) {
-            requestTimeoutMillis = 60 * 1000
+            requestTimeoutMillis = 600 * 1000 // hio instances can take a long time to respond...
         }
 
         followRedirects = true
