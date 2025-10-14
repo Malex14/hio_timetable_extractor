@@ -59,7 +59,10 @@ enum class ModuleType {
         fun fromHIOString(str: String): ModuleType = when (str) {
             "Pflicht" -> MANDATORY
             "Wahlpflicht" -> ELECTIVE
-            else -> UNKNOWN
+            else -> {
+                println("unknown module type: $str")
+                UNKNOWN
+            }
         }
     }
 }
@@ -144,7 +147,7 @@ enum class ParallelGroupDateRhythm {
             "vierwöchentlich" -> QUAD_WEEKLY
             "Blockveranstaltung" -> BLOCK
             else -> {
-                println("unbekanntes intervall $str")
+                println("unknown parallel group rhythm $str")
                 UNKNOWN
             }
         }
@@ -198,7 +201,10 @@ enum class ModulePartType {
             "Vorlesung", "Lehrvortrag" -> LECTURE
             "Praktikum" -> INTERNSHIP
             "Praxisgruppe" -> PRACTICE_GROUP
-            else -> UNKNOWN
+            else -> {
+                println("unknown module part type $str")
+                UNKNOWN
+            }
         }
     }
 }
@@ -219,7 +225,7 @@ enum class ModuleInterval {
             "nur im Sommersemester" -> ONLY_DURING_SUMMER
             "jährlich" -> YEARLY
             else -> {
-                println(str)
+                println("unknown module interval $str")
                 UNKNOWN
             }
         }
