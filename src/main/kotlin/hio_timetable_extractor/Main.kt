@@ -11,6 +11,7 @@ import kotlin.concurrent.fixedRateTimer
 import kotlin.io.path.Path
 import kotlin.io.path.notExists
 import kotlin.system.exitProcess
+import kotlin.time.measureTime
 
 suspend fun main() {
     val envs = System.getenv()
@@ -40,12 +41,19 @@ suspend fun main() {
     val scope = CoroutineScope(currentCoroutineContext())
     fixedRateTimer(name = "main loop", period = period.toLong() * 1000 * 60 * 60) {
         scope.launch(Dispatchers.Default) {
-            val (_, tree) = getAndExpandCourseTree(client)
-            val (periodId, courseCatalog) = parseTree(tree)
+            val time = measureTime {
+                try {
+                    val (_, tree) = getAndExpandCourseTree(client)
+                    val (periodId, courseCatalog) = parseTree(tree)
 
-            addModuleInfoToCourseCatalog(client, courseCatalog, periodId)
-            addModulePartInfoToCourseCatalog(client, courseCatalog, periodId)
-            writeDirectoryAndEventFiles(exportPath, courseCatalog)
+                    addModuleInfoToCourseCatalog(client, courseCatalog, periodId)
+                    addModulePartInfoToCourseCatalog(client, courseCatalog, periodId)
+                    writeDirectoryAndEventFiles(exportPath, courseCatalog)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+            println("scraping done in $time")
 
             println("waiting for next iteration")
         }
