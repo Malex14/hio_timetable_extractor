@@ -6,6 +6,8 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.time.LocalDateTime
 import java.util.*
+import kotlin.io.path.deleteIfExists
+import kotlin.io.path.name
 
 @Serializable
 data class Event(
@@ -88,6 +90,15 @@ internal fun writeDirectoryAndEventFiles(path: Path, courseCatalog: CourseCatalo
     }
 
     Files.writeString(path.resolve("directory.json"), JSON_PASCAL_CASE_SERIALIZER.encodeToString(directories))
+
+    val invalidEventFiles = Files.newDirectoryStream(path) { it.name != "directory.json" }.use {
+        it.asSequence().map { file -> file.name }.toSet() - events.keys.map { id -> "${id}.json" }.toSet()
+    }
+    println("Deleting old event files: ${invalidEventFiles.joinToString(", ")}")
+    for (file in invalidEventFiles) {
+        path.resolve(file).deleteIfExists()
+    }
+
     for ((id, events) in events) {
         Files.writeString(path.resolve("$id.json"), JSON_PASCAL_CASE_SERIALIZER.encodeToString(events))
     }
