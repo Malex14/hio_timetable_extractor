@@ -1,5 +1,6 @@
 package de.mbehrmann.hio_timetable_extractor
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -13,26 +14,28 @@ import kotlin.io.path.notExists
 import kotlin.system.exitProcess
 import kotlin.time.measureTime
 
+private val logger = KotlinLogging.logger {}
+
 suspend fun main() {
     val envs = System.getenv()
     val hioInstance = envs["HIO_INSTANCE"]
     if (hioInstance == null || hioInstance.isBlank()) {
-        println("'HIO_INSTANCE' environment variable not set")
+        logger.error { "'HIO_INSTANCE' environment variable not set" }
         exitProcess(1)
     }
     val exportDir = envs["EXPORT_DIR"]
     if (exportDir == null) {
-        println("'EXPORT_DIR' environment variable not set")
+        logger.error { "'EXPORT_DIR' environment variable not set" }
         exitProcess(2)
     }
     val exportPath = Path(exportDir)
     if (exportPath.notExists()) {
-        println("'EXPORT_DIR' doesn't exist")
+        logger.error { "'EXPORT_DIR' doesn't exist" }
         exitProcess(3)
     }
     val period = envs["PERIOD"]
     if (period == null || period.toLongOrNull() == null) {
-        println("'PERIOD' is not set or invalid")
+        logger.error { "'PERIOD' is not set or invalid" }
         exitProcess(4)
     }
 
@@ -50,12 +53,12 @@ suspend fun main() {
                     addModulePartInfoToCourseCatalog(client, courseCatalog, periodId)
                     writeDirectoryAndEventFiles(exportPath, courseCatalog)
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    logger.error(e) { "scraping failed" }
                 }
             }
-            println("scraping done in $time")
+            logger.info { "scraping done in $time" }
 
-            println("waiting for next iteration")
+            logger.info { "waiting for next iteration" }
         }
     }
 }
@@ -95,7 +98,8 @@ private suspend fun addModulePartInfoToCourseCatalog(client: HIOClient, courseCa
             Regex("^detailViewData:tabContainer:term-planning-container:parallelGroupSchedule_\\d+$").toPattern()
         )
         for (parallelGroup in parallelGroups) {
-            val titleElem = parallelGroup.getElementsByTag("h3").first() ?: throw NoSuchElementException()
+            val titleElem = parallelGroup.getElementsByTag("h3").first()
+                ?: throw NoSuchElementException("parallel group title element not found")
             val (shortName, name, groupNumber) = parseParallelGroupTitle(
                 titleElem.ownText(),
                 part,
@@ -103,7 +107,8 @@ private suspend fun addModulePartInfoToCourseCatalog(client: HIOClient, courseCa
             )
 
             val boxContentElem =
-                parallelGroup.getElementsByClass("box_content").first() ?: throw NoSuchElementException()
+                parallelGroup.getElementsByClass("box_content").first()
+                    ?: throw NoSuchElementException("parallel group box content not found")
             val labels = boxContentElem.getElementsByClass("labelWithBG no_pointer")
                 .groupingBy { it.ownText() }
                 .reduce { _, e, _ -> e }
@@ -115,7 +120,7 @@ private suspend fun addModulePartInfoToCourseCatalog(client: HIOClient, courseCa
                 shortName,
                 name,
                 groupNumber,
-                getText("Semesterwochenstunden", labels)?.toDouble() ?: throw NoSuchElementException(),
+                getText("Semesterwochenstunden", labels)?.toDouble() ?: throw NoSuchElementException("sws not found"),
                 getText("Lehrsprache", labels),
                 labels["Verantwortliche/-r"]
                     ?.nextElementSibling()
@@ -199,7 +204,7 @@ private fun parseParallelGroupTitle(
     modulePart: ModulePart,
     isOnlyGroup: Boolean,
 ): Triple<String?, String?, Int?> {
-    println(modulePart.shortName + " - " + modulePart.name)
+    logger.debug { modulePart.shortName + " - " + modulePart.name }
 
     val groupNumberRegex = Regex("(\\d+)\\. Parallelgruppe")
     val groupNumber = groupNumberRegex.find(title)?.groupValues?.getOrNull(1)?.toInt()
@@ -208,13 +213,15 @@ private fun parseParallelGroupTitle(
     var name: String? = null
     when {
         title == modulePart.name || title == modulePart.shortName -> {
-            println("plain: $title")
+            logger.debug { "plain: $title" }
 
             name = modulePart.name
             shortName = modulePart.shortName
         }
 
         modulePart.number == "1INF-PRO.LV-P" || modulePart.number == "1INF-AIS.LV-P" -> { // projects / seminars in faculty inf
+            logger.debug { "pro: $title" }
+
             val projectRegex = Regex("(.*?) \\(\\d+\\. Parallelgruppe\\)")
             projectRegex.find(title)?.groupValues?.let {
                 name = it[1]
@@ -222,28 +229,34 @@ private fun parseParallelGroupTitle(
         }
 
         modulePart.number == "1AI-ENG1.LV" -> {
+            logger.debug { "english: $title" }
+
             name = modulePart.name
             shortName = "${modulePart.shortName}/${title.substringBefore('_')}"
         }
 
         title.startsWith("WP/WPP") -> {
+            logger.debug { "WP: $title" }
+
             name = title.substring("WP/WPP ".length)
         }
 
         title.startsWith("VL+Ü") -> {
+            logger.debug { "VL+Ü" }
+
             name = title.substring("VL+Ü ".length)
             shortName = modulePart.shortName
         }
 
         title.startsWith(modulePart.name) -> { // faculty inf without shortName
-            println("inf wo: $title")
+            logger.debug { "inf wo: $title" }
 
             name = modulePart.name
             shortName = modulePart.shortName
         }
 
         title.matches(Regex("\\d{2}_+${modulePart.shortName}.*")) -> { // faculty inf with shortName
-            println("inf w0: $title")
+            logger.debug { "inf w0: $title" }
 
             val shortNameAndNameRegex = Regex("(\\d{2}_+${modulePart.shortName}) ?(.*?) ?\\(")
             shortNameAndNameRegex.find(title)?.groupValues?.let {
@@ -253,21 +266,21 @@ private fun parseParallelGroupTitle(
         }
 
         title.matches(Regex("${modulePart.shortName}/\\d{2}.*")) -> { // faculty emi
-            println("emi: $title")
+            logger.debug { "emi: $title" }
 
             shortName = title.substringBefore(' ')
             name = modulePart.name
         }
 
         title.matches(Regex("\\d{2} ${modulePart.name}.*${modulePart.number}.*")) -> { // faculty inf with shortName, but different ;)
-            println("inf w1: $title")
+            logger.debug { "inf w1: $title" }
 
             shortName = "${modulePart.shortName}/${title.substringBefore(' ')}"
             name = title.substringAfter(' ').substringBefore(" (")
         }
 
         title.matches(Regex("(\\(online\\) )?\\d{2}( \\(online\\))? (${modulePart.shortName}|.*${modulePart.number}).*")) -> { // faculty inf with shortName. another variant :(
-            println("inf w2: $title")
+            logger.debug { "inf w2: $title" }
 
             shortName = if (title.startsWith("(online)")) {
                 val start = "(online) ".length
@@ -279,13 +292,13 @@ private fun parseParallelGroupTitle(
         }
 
         title.matches(Regex("\\d{2}\\+\\d{2} .*?")) -> {
-            println("minf: $title")
+            logger.debug { "minf: $title" }
             shortName = "${modulePart.shortName}/${title.take(5)}"
             name = modulePart.name
         }
 
         title.matches(Regex("\\d+\\.?G - .*")) -> {
-            println("ful: $title")
+            logger.debug { "ful: $title" }
             var dotIndex = title.indexOf('.')
             if (dotIndex < 0) dotIndex = Int.MAX_VALUE
 
@@ -295,6 +308,8 @@ private fun parseParallelGroupTitle(
         }
 
         title.matches(Regex("\\d*\\.? ?Termingruppe.*")) -> {
+            logger.debug { "termingruppe: $title" }
+
             shortName = if (isOnlyGroup) {
                 modulePart.shortName
             } else {
@@ -307,7 +322,7 @@ private fun parseParallelGroupTitle(
         title.startsWith("BABE ")
                 || title.startsWith("MASA ")
                 || title.matches(Regex("((M ?(\\d+\\.)*(\\d|[A-Z])+ ?\\+ ?)*M ?(\\d+\\.)*(\\d|[A-Z])+( ?\\(gekoppelt\\))?) ?(.*?)( ?\\(\\d+. Par.*|$)")) -> {
-            println("sauk: $title")
+            logger.debug { "sauk: $title" }
             val shortNameAndNameRegex =
                 Regex("((?:M? ?(?:\\d+\\.)*(?:\\d|[A-Z])+ ?\\+ ?)*M? ?(?:\\d+\\.)*(?:\\d|[A-Z])+(?: ?\\(gekoppelt\\))?) ?(.*?)(?: ?\\(\\d+. Par|$)")
             val cleanedTitle = if (title.startsWith("BABE ") || title.startsWith("MASA ")) {
@@ -331,7 +346,7 @@ private fun parseParallelGroupTitle(
         }
 
         else -> { // all other strange entries
-            println("unbekannt: $title")
+            logger.debug { "unbekannt: $title" }
 
             name = modulePart.name
             shortName = if (title[0].isDigit() && title[1].isDigit()) {
@@ -344,7 +359,7 @@ private fun parseParallelGroupTitle(
         }
     }
 
-    println("'$shortName' - '$name' - '$groupNumber'")
+    logger.debug { "'$shortName' - '$name' - '$groupNumber'" }
 
     return Triple(shortName, name, groupNumber)
 }

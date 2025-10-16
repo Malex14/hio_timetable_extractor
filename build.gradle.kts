@@ -10,6 +10,8 @@ version = "1.0-SNAPSHOT"
 val ktor_version: String by project
 val jsoup_version: String by project
 val kotlinx_serialization_json_version: String by project
+val slf4j_version: String by project
+val kotlin_logging_jvm_version: String by project
 
 application {
     mainClass.set("de.mbehrmann.hio_timetable_extractor.MainKt")
@@ -26,6 +28,9 @@ dependencies {
     implementation("io.ktor:ktor-client-encoding:${ktor_version}")
     implementation("org.jsoup:jsoup:${jsoup_version}")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:${kotlinx_serialization_json_version}")
+    implementation("org.slf4j:slf4j-api:${slf4j_version}")
+    implementation("org.slf4j:slf4j-simple:${slf4j_version}")
+    implementation("io.github.oshai:kotlin-logging-jvm:${kotlin_logging_jvm_version}")
 }
 
 tasks.test {
