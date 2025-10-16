@@ -206,7 +206,7 @@ private fun parseParallelGroupTitle(
 ): Triple<String?, String?, Int?> {
     logger.debug { modulePart.shortName + " - " + modulePart.name }
 
-    val groupNumberRegex = Regex("(\\d+)\\. Parallelgruppe")
+    val groupNumberRegex = Regex(".*(\\d+)\\. Parallelgruppe")
     val groupNumber = groupNumberRegex.find(title)?.groupValues?.getOrNull(1)?.toInt()
 
     var shortName: String? = null
