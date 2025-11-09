@@ -12,6 +12,7 @@ import kotlin.concurrent.fixedRateTimer
 import kotlin.io.path.Path
 import kotlin.io.path.notExists
 import kotlin.system.exitProcess
+import kotlin.text.isBlank
 import kotlin.time.measureTime
 
 private val logger = KotlinLogging.logger {}
@@ -24,7 +25,7 @@ suspend fun main() {
         exitProcess(1)
     }
     val exportDir = envs["EXPORT_DIR"]
-    if (exportDir == null) {
+    if (exportDir == null || exportDir.isBlank()) {
         logger.error { "'EXPORT_DIR' environment variable not set" }
         exitProcess(2)
     }
@@ -35,28 +36,33 @@ suspend fun main() {
     }
     val period = envs["PERIOD"]
     if (period == null || period.toLongOrNull() == null) {
-        logger.error { "'PERIOD' is not set or invalid" }
+        logger.error { "'PERIOD' environment variable not set or invalid" }
         exitProcess(4)
+    }
+    val gitUrl = envs["GIT_URL"]
+    if (gitUrl == null || gitUrl.isBlank()) {
+        logger.error { "'GIT_URL' environment variable not set or invalid" }
+        exitProcess(5)
     }
 
     val client = HIOClient(hioInstance)
-
     val scope = CoroutineScope(currentCoroutineContext())
     fixedRateTimer(name = "main loop", period = period.toLong() * 1000 * 60 * 60) {
         scope.launch(Dispatchers.Default) {
-            val time = measureTime {
-                try {
+            try {
+                val time = measureTime {
                     val (_, tree) = getAndExpandCourseTree(client)
                     val (periodId, courseCatalog) = parseTree(tree)
 
                     addModuleInfoToCourseCatalog(client, courseCatalog, periodId)
                     addModulePartInfoToCourseCatalog(client, courseCatalog, periodId)
                     writeDirectoryAndEventFiles(exportPath, courseCatalog)
-                } catch (e: Exception) {
-                    logger.error(e) { "scraping failed" }
+                    pushDirToGit(exportPath, gitUrl)
                 }
+                logger.info { "scraping done in $time" }
+            } catch (e: Exception) {
+                logger.error(e) { "scraping failed" }
             }
-            logger.info { "scraping done in $time" }
 
             logger.info { "waiting for next iteration" }
         }

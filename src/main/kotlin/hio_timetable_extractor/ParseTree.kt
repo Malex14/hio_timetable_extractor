@@ -109,7 +109,6 @@ private fun parseGroupLikeNode(
         subModules[nodeId.last()] = SubModule(
             name, mutableMapOf(), mutableMapOf()
         )
-
     } else { // Modul-Gruppe
         moduleGroups[nodeId.last()] = ModuleGroup(
             name, mutableMapOf(), mutableMapOf()
