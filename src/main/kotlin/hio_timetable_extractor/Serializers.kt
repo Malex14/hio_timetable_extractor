@@ -1,5 +1,6 @@
 package de.mbehrmann.hio_timetable_extractor
 
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
@@ -15,6 +16,7 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
 val GERMAN_DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.uuuu")
+@OptIn(ExperimentalSerializationApi::class)
 val JSON_SERIALIZER: Json = Json {
     serializersModule = SerializersModule {
         contextual(LocalDateSerializer)
@@ -22,6 +24,7 @@ val JSON_SERIALIZER: Json = Json {
         contextual(LocalDateTimeSerializer)
     }
     prettyPrint = true
+    prettyPrintIndent = "\t"
 }
 
 abstract class Serializer {
