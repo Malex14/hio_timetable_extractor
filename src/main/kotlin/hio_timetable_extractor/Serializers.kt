@@ -21,6 +21,7 @@ val JSON_SERIALIZER: Json = Json {
         contextual(LocalTimeSerializer)
         contextual(LocalDateTimeSerializer)
     }
+    prettyPrint = true
 }
 
 abstract class Serializer {
