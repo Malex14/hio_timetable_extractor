@@ -11,7 +11,6 @@ import kotlin.io.path.name
 
 @Serializable
 data class Event(
-    val id: String,
     val name: String,
     val location: String,
     val description: String,
@@ -21,34 +20,30 @@ data class Event(
 
 @Serializable
 data class Directory(
-    val name: String,
-    val subDirectories: MutableList<Directory> = mutableListOf(),
-    val events: MutableList<DirectoryEvent> = mutableListOf(),
-)
-
-@Serializable
-data class DirectoryEvent(
-    val id: String,
-    val name: String
+    val subDirectories: LinkedHashMap<String, Directory> = linkedMapOf(),
+    val events: LinkedHashMap<String, String> = linkedMapOf(),
 )
 
 internal fun writeDirectoryAndEventFiles(path: Path, courseCatalog: CourseCatalog) {
-    val directories = mutableListOf<Directory>()
+    val directory = Directory()
     val events = mutableMapOf<String, List<Event>>()
 
     for (faculty in courseCatalog.faculties) {
-        val facultySubdirectory = Directory(faculty.name)
+        val facultySubdirectoryName = faculty.name
+        val facultySubdirectory = Directory()
 
         for (studyCourse in faculty.studyCourses) {
-            val studyCourseSubDirectory = Directory("${studyCourse.name} (${studyCourse.po})")
+            val studyCourseSubDirectoryName = "${studyCourse.name} (${studyCourse.po})"
+            val studyCourseSubDirectory = Directory()
 
-            fun traverse(moduleGroups: Map<Int, ModuleGroup>): List<Directory> {
-                val directories = mutableListOf<Directory>()
+            fun traverse(moduleGroups: Map<Int, ModuleGroup>): LinkedHashMap<String, Directory> {
+                val directories = linkedMapOf<String, Directory>()
 
                 for ((_, group) in moduleGroups.entries.sortedBy { it.key }) {
-                    val groupDirectory = Directory(group.name)
+                    val groupDirectoryName = group.name
+                    val groupDirectory = Directory()
 
-                    groupDirectory.subDirectories.addAll(traverse(group.subGroups))
+                    groupDirectory.subDirectories.putAll(traverse(group.subGroups))
 
                     for (module in group.modules.entries
                         .sortedBy { it.key }
@@ -65,7 +60,7 @@ internal fun writeDirectoryAndEventFiles(path: Path, courseCatalog: CourseCatalo
                     }
 
                     if (groupDirectory.subDirectories.isNotEmpty() || groupDirectory.events.isNotEmpty()) {
-                        directories.add(groupDirectory)
+                        directories[groupDirectoryName] = groupDirectory
                     }
                 }
 
@@ -75,21 +70,21 @@ internal fun writeDirectoryAndEventFiles(path: Path, courseCatalog: CourseCatalo
             traverse(studyCourse.moduleGroups)
                 .takeIf { it.isNotEmpty() }
                 ?.let {
-                    studyCourseSubDirectory.subDirectories.addAll(it)
+                    studyCourseSubDirectory.subDirectories.putAll(it)
                 }
 
-            facultySubdirectory.subDirectories.add(studyCourseSubDirectory)
+            facultySubdirectory.subDirectories[studyCourseSubDirectoryName] = studyCourseSubDirectory
         }
 
-        if (facultySubdirectory.subDirectories.all { it.subDirectories.isEmpty() }) {
+        if (facultySubdirectory.subDirectories.values.all { it.subDirectories.isEmpty() }) {
             // if all study courses from faculty are empty clear them all
             facultySubdirectory.subDirectories.clear()
         }
 
-        directories.add(facultySubdirectory)
+        directory.subDirectories[facultySubdirectoryName] = facultySubdirectory
     }
 
-    Files.writeString(path.resolve("directory.json"), JSON_PASCAL_CASE_SERIALIZER.encodeToString(directories))
+    Files.writeString(path.resolve("directory.json"), JSON_SERIALIZER.encodeToString(directory))
 
     val invalidEventFiles = Files.newDirectoryStream(path) { it.name != "directory.json" }.use {
         it.asSequence().map { file -> file.name }.toSet() - events.keys.map { id -> "${id}.json" }.toSet()
@@ -100,7 +95,7 @@ internal fun writeDirectoryAndEventFiles(path: Path, courseCatalog: CourseCatalo
     }
 
     for ((id, events) in events) {
-        Files.writeString(path.resolve("$id.json"), JSON_PASCAL_CASE_SERIALIZER.encodeToString(events))
+        Files.writeString(path.resolve("$id.json"), JSON_SERIALIZER.encodeToString(events))
     }
 }
 
@@ -147,7 +142,7 @@ private fun processModule(
         }
 
         else -> {
-            val moduleDirectory = Directory(name)
+            val moduleDirectory = Directory()
 
             for (part in moduleParts.entries.sortedBy { it.key }.map { courseCatalog.moduleParts[it.value]!! }) {
                 processModulePart(part, moduleDirectory, events, courseCatalog)
@@ -167,7 +162,7 @@ private fun processModule(
             }
 
             if (moduleDirectory.events.isNotEmpty() || moduleDirectory.subDirectories.isNotEmpty()) {
-                directory.subDirectories.add(moduleDirectory)
+                directory.subDirectories[name] = moduleDirectory
             }
         }
     }
@@ -187,28 +182,27 @@ private fun processModulePart(
             val id = generateId(modulePart, parallelGroup, true)
             val name = modulePart.shortName?.let { "$it (${modulePart.name})" } ?: modulePart.name
 
-            directory.events.add(DirectoryEvent(id, name))
-            events[id] = generateEventsFromParallelGroup(parallelGroup, id, name, courseCatalog)
+            directory.events[id] = name
+            events[id] = generateEventsFromParallelGroup(parallelGroup, name, courseCatalog)
         }
 
         else -> {
-            val partDirectory = Directory(modulePart.name)
+            val partDirectory = Directory()
             for (group in modulePart.parallelGroups.sortedBy { it.shortName }) {
                 val id = generateId(modulePart, group)
                 val name = group.shortName?.let { "$it (${group.name})" } ?: group.name
                 ?: modulePart.name // TODO: schöner machen   // pg integrieren
 
-                partDirectory.events.add(DirectoryEvent(id, name))
-                events[id] = generateEventsFromParallelGroup(group, id, name, courseCatalog)
+                partDirectory.events[id] = name
+                events[id] = generateEventsFromParallelGroup(group, name, courseCatalog)
             }
-            directory.subDirectories.add(partDirectory)
+            directory.subDirectories[modulePart.name] = partDirectory
         }
     }
 }
 
 private fun generateEventsFromParallelGroup(
     parallelGroup: ParallelGroup,
-    id: String,
     name: String,
     courseCatalog: CourseCatalog
 ): List<Event> {
@@ -222,7 +216,6 @@ private fun generateEventsFromParallelGroup(
                 if (pdDate.cancellations.isEmpty()) {
                     events.add(
                         Event(
-                            id = id,
                             name = name,
                             location = pdDate.room?.let { generateRoomString(courseCatalog.rooms[it]!!) }
                                 ?: "(kein Raum angegeben)",
@@ -240,7 +233,6 @@ private fun generateEventsFromParallelGroup(
                     if (!pdDate.cancellations.contains(currentDate)) {
                         events.add(
                             Event(
-                                id = id,
                                 name = name,
                                 location = pdDate.room?.let { generateRoomString(courseCatalog.rooms[it]!!) }
                                     ?: "(kein Raum angegeben)",
