@@ -1,15 +1,29 @@
 package de.mbehrmann.hio_timetable_extractor
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.io.File
+import java.nio.file.Files
 import java.nio.file.Path
 import java.time.LocalDateTime
 import kotlin.io.path.exists
+import kotlin.system.exitProcess
 
-internal fun pushDirToGit(path: Path, url: String) {
+private val logger = KotlinLogging.logger {}
+
+internal fun initGit(path: Path, url: String) {
     val pathAsFile = path.toFile()
+
     if (!path.resolve(".git").exists()) {
+        if (Files.newDirectoryStream(path).any()) {
+            logger.error { "'EXPORT_DIR' is no git repository, but has files in it" }
+            exitProcess(-1)
+        }
         run(pathAsFile, "git", "clone", url, path.toString())
     }
+}
+
+internal fun pushDirToGit(path: Path) {
+    val pathAsFile = path.toFile()
 
     val checkStatus = { expected: Int ->
         { status: Int -> if (status != expected) throw IllegalStateException("git returned unexpected code $status") }

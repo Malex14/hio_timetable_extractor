@@ -46,6 +46,7 @@ suspend fun main() {
     }
 
     val client = HIOClient(hioInstance)
+    initGit(exportPath, gitUrl)
     val scope = CoroutineScope(currentCoroutineContext())
     fixedRateTimer(name = "main loop", period = period.toLong() * 1000 * 60 * 60) {
         scope.launch(Dispatchers.Default) {
@@ -57,7 +58,7 @@ suspend fun main() {
                     addModuleInfoToCourseCatalog(client, courseCatalog, periodId)
                     addModulePartInfoToCourseCatalog(client, courseCatalog, periodId)
                     writeDirectoryAndEventFiles(exportPath, courseCatalog)
-                    pushDirToGit(exportPath, gitUrl)
+                    pushDirToGit(exportPath)
                 }
                 logger.info { "scraping done in $time" }
             } catch (e: Exception) {
