@@ -12,7 +12,6 @@ import kotlin.concurrent.fixedRateTimer
 import kotlin.io.path.Path
 import kotlin.io.path.notExists
 import kotlin.system.exitProcess
-import kotlin.text.isBlank
 import kotlin.time.measureTime
 
 private val logger = KotlinLogging.logger {}

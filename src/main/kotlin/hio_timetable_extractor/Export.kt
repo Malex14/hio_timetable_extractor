@@ -86,17 +86,17 @@ internal fun writeDirectoryAndEventFiles(path: Path, courseCatalog: CourseCatalo
 
     Files.writeString(path.resolve("directory.json"), JSON_SERIALIZER.encodeToString(directory))
 
-    val invalidEventFiles =
-        Files.newDirectoryStream(path) { it.name.endsWith(".json") && it.name != "directory.json" }.use {
-            it.asSequence().map { file -> file.name }.toSet() - events.keys.map { id -> "${id}.json" }.toSet()
-        }
+    val eventsDirPath = path.resolve("events")
+    val invalidEventFiles = Files.newDirectoryStream(eventsDirPath) { it.name.endsWith(".json") }.use {
+        it.asSequence().map { file -> file.name }.toSet() - events.keys.map { id -> "${id}.json" }.toSet()
+    }
     println("Deleting old event files: ${invalidEventFiles.joinToString(", ")}")
     for (file in invalidEventFiles) {
         path.resolve(file).deleteIfExists()
     }
 
     for ((id, events) in events) {
-        Files.writeString(path.resolve("$id.json"), JSON_SERIALIZER.encodeToString(events))
+        Files.writeString(eventsDirPath.resolve("$id.json"), JSON_SERIALIZER.encodeToString(events))
     }
 }
 
