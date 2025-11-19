@@ -46,3 +46,4 @@ bin/
 .DS_Store
 
 /eventfiles
+id_ed25519*

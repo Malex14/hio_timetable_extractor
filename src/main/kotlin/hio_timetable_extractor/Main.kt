@@ -10,44 +10,21 @@ import java.time.LocalDate
 import java.time.LocalTime
 import kotlin.concurrent.fixedRateTimer
 import kotlin.io.path.Path
-import kotlin.io.path.notExists
-import kotlin.system.exitProcess
+import kotlin.io.path.exists
 import kotlin.time.measureTime
 
 private val logger = KotlinLogging.logger {}
 
 suspend fun main() {
-    val envs = System.getenv()
-    val hioInstance = envs["HIO_INSTANCE"]
-    if (hioInstance == null || hioInstance.isBlank()) {
-        logger.error { "'HIO_INSTANCE' environment variable not set" }
-        exitProcess(1)
-    }
-    val exportDir = envs["EXPORT_DIR"]
-    if (exportDir == null || exportDir.isBlank()) {
-        logger.error { "'EXPORT_DIR' environment variable not set" }
-        exitProcess(2)
-    }
-    val exportPath = Path(exportDir)
-    if (exportPath.notExists()) {
-        logger.error { "'EXPORT_DIR' doesn't exist" }
-        exitProcess(3)
-    }
-    val period = envs["PERIOD"]
-    if (period == null || period.toLongOrNull() == null) {
-        logger.error { "'PERIOD' environment variable not set or invalid" }
-        exitProcess(4)
-    }
-    val gitUrl = envs["GIT_URL"]
-    if (gitUrl == null || gitUrl.isBlank()) {
-        logger.error { "'GIT_URL' environment variable not set or invalid" }
-        exitProcess(5)
-    }
+    val hioInstance = getEnvOrThrow("HIO_INSTANCE")
+    val exportPath = getEnvAndMapOrThrow("EXPORT_DIR") { str -> Path(str).takeIf { it.exists() } }
+    val period = getEnvAndMapOrThrow("PERIOD") { str -> str.toLongOrNull() }
+    val gitUrl = getEnvOrThrow("GIT_URL")
 
     val client = HIOClient(hioInstance)
     initGit(exportPath, gitUrl)
     val scope = CoroutineScope(currentCoroutineContext())
-    fixedRateTimer(name = "main loop", period = period.toLong() * 1000 * 60 * 60) {
+    fixedRateTimer(name = "main loop", period = period * 1000 * 60 * 60) {
         scope.launch(Dispatchers.Default) {
             try {
                 val time = measureTime {
