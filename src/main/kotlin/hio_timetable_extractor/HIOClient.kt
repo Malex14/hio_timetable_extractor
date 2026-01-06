@@ -133,7 +133,6 @@ class HIOClient(val instance: String) {
         }
     }
 
-
     interface UnitDetailsHelper {
         fun getText(label: String, labels: Map<String, Element>): String?
         fun getText(label: String): String?
@@ -143,20 +142,20 @@ class HIOClient(val instance: String) {
     suspend fun <T> forEachUnitGetDetailsPage(
         unitMap: Map<Int, T>,
         periodId: Int,
+        totalUnits: Int = unitMap.size,
         fn: UnitDetailsHelper.(unitId: Int, unit: T, document: Document, flowExecutionKey: String) -> Unit
     ) {
         val flow = "detailView-flow"
-        val units = unitMap.size
-        var i = 1
+        unitMap.entries.withIndex().forEach { (i, entry) ->
+            val (unitId, unit) = entry
 
-        for ((unitId, unit) in unitMap) {
-            logger.info { "getting details page for unit $unitId (${i}/$units | ${i * 100 / units} %)" }
+            logger.info { "getting details page for unit $unitId (${i + 1}/$totalUnits | ${i + 1 * 100 / totalUnits} %)" }
 
             val (flowExecutionKey, document) = startFlow(
                 flow,
                 listOf(
-                    Pair("unitId", unitId.toString()),
-                    Pair("periodId", periodId.toString())
+                    "unitId" to unitId.toString(),
+                    "periodId" to periodId.toString()
                 )
             )
 
@@ -176,8 +175,6 @@ class HIOClient(val instance: String) {
                         ?.ownText()
                 }
             }.fn(unitId, unit, document, flowExecutionKey)
-
-            i++
         }
     }
 }

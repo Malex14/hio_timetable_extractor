@@ -31,8 +31,10 @@ suspend fun main() {
                     val (_, tree) = getAndExpandCourseTree(client)
                     val (periodId, courseCatalog) = parseTree(tree)
 
-                    addModuleInfoToCourseCatalog(client, courseCatalog, periodId)
-                    addModulePartInfoToCourseCatalog(client, courseCatalog, periodId)
+                    val totalUnits = courseCatalog.modules.size + courseCatalog.moduleParts.size
+                    addModuleInfoToCourseCatalog(client, courseCatalog, periodId, totalUnits)
+                    addModulePartInfoToCourseCatalog(client, courseCatalog, periodId, totalUnits)
+
                     writeDirectoryAndEventFiles(exportPath, courseCatalog)
                     pushDirToGit(exportPath)
                 }
@@ -46,8 +48,13 @@ suspend fun main() {
     }
 }
 
-private suspend fun addModuleInfoToCourseCatalog(client: HIOClient, courseCatalog: CourseCatalog, periodId: Int) {
-    client.forEachUnitGetDetailsPage(courseCatalog.modules, periodId) { _, module, _, _ ->
+private suspend fun addModuleInfoToCourseCatalog(
+    client: HIOClient,
+    courseCatalog: CourseCatalog,
+    periodId: Int,
+    totalUnits: Int
+) {
+    client.forEachUnitGetDetailsPage(courseCatalog.modules, periodId, totalUnits) { _, module, _, _ ->
         with(module) {
             shortName = getText("Kurztext")
             longName = getText("Langtext")
@@ -65,8 +72,13 @@ private suspend fun addModuleInfoToCourseCatalog(client: HIOClient, courseCatalo
     }
 }
 
-private suspend fun addModulePartInfoToCourseCatalog(client: HIOClient, courseCatalog: CourseCatalog, periodId: Int) {
-    client.forEachUnitGetDetailsPage(courseCatalog.moduleParts, periodId) { _, part, document, _ ->
+private suspend fun addModulePartInfoToCourseCatalog(
+    client: HIOClient,
+    courseCatalog: CourseCatalog,
+    periodId: Int,
+    totalUnits: Int
+) {
+    client.forEachUnitGetDetailsPage(courseCatalog.moduleParts, periodId, totalUnits) { _, part, document, _ ->
         with(part) {
             shortName = getText("Kurztext")
             longName = getText("Langtext")
