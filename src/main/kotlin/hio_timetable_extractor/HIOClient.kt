@@ -46,7 +46,7 @@ class HIOClient(val instance: String) {
         flow: String,
         extraParameters: List<Pair<String, String>> = emptyList()
     ): Pair<String, Document> {
-        logger.info { "starting flow $flow with parameters $extraParameters" }
+        logger.debug { "starting flow $flow with parameters $extraParameters" }
 
         val response = httpClient.get("${instance}/qisserver/pages/startFlow.xhtml") {
             url {
@@ -78,7 +78,8 @@ class HIOClient(val instance: String) {
         action: String,
         render: Boolean = true
     ) {
-        logger.info { "doing action $action ($source) on ${instance}/qisserver/pages/${page}?_flowId=${flow}&_flowExecutionKey=${flowExecutionKey}" }
+        logger.info { "applying action $action" }
+        logger.debug { "applying action $action ($source) on ${instance}/qisserver/pages/${page}?_flowId=${flow}&_flowExecutionKey=${flowExecutionKey}" }
 
         val response = httpClient.submitForm(
             url = "${instance}/qisserver/pages/${page}",
@@ -114,7 +115,8 @@ class HIOClient(val instance: String) {
         flowExecutionKey: String,
         expectedStatus: Int? = 200
     ): Document {
-        logger.info { "getting page: ${instance}/qisserver/pages/${page}?_flowId=${flow}&_flowExecutionKey=${flowExecutionKey}" }
+        logger.info { "getting page $page" }
+        logger.debug { "getting page: ${instance}/qisserver/pages/${page}?_flowId=${flow}&_flowExecutionKey=${flowExecutionKey}" }
 
         val response = httpClient.get("${instance}/qisserver/pages/${page}") {
             url {
