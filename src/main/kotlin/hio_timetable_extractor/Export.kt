@@ -92,7 +92,7 @@ internal fun writeDirectoryAndEventFiles(path: Path, courseCatalog: CourseCatalo
     }
     println("Deleting old event files: ${invalidEventFiles.joinToString(", ")}")
     for (file in invalidEventFiles) {
-        path.resolve(file).deleteIfExists()
+        eventsDirPath.resolve(file).deleteIfExists()
     }
 
     for ((id, events) in events) {
