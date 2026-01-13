@@ -145,13 +145,14 @@ class HIOClient(val instance: String) {
         unitMap: Map<Int, T>,
         periodId: Int,
         totalUnits: Int = unitMap.size,
+        unitsDoneSoFar: Int = 0,
         fn: UnitDetailsHelper.(unitId: Int, unit: T, document: Document, flowExecutionKey: String) -> Unit
     ) {
         val flow = "detailView-flow"
         unitMap.entries.withIndex().forEach { (i, entry) ->
             val (unitId, unit) = entry
 
-            logger.info { "getting details page for unit $unitId (${i + 1}/$totalUnits | ${(i + 1) * 100 / totalUnits} %)" }
+            logger.info { "getting details page for unit $unitId (${i + 1 + unitsDoneSoFar}/$totalUnits | ${(i + 1 + unitsDoneSoFar) * 100 / totalUnits} %)" }
 
             val (flowExecutionKey, document) = startFlow(
                 flow,

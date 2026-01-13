@@ -33,7 +33,7 @@ suspend fun main() {
 
                     val totalUnits = courseCatalog.modules.size + courseCatalog.moduleParts.size
                     addModuleInfoToCourseCatalog(client, courseCatalog, periodId, totalUnits)
-                    addModulePartInfoToCourseCatalog(client, courseCatalog, periodId, totalUnits)
+                    addModulePartInfoToCourseCatalog(client, courseCatalog, periodId, totalUnits, courseCatalog.modules.size)
 
                     writeDirectoryAndEventFiles(exportPath, courseCatalog)
                     pushDirToGit(exportPath)
@@ -52,9 +52,10 @@ private suspend fun addModuleInfoToCourseCatalog(
     client: HIOClient,
     courseCatalog: CourseCatalog,
     periodId: Int,
-    totalUnits: Int
+    totalUnits: Int,
+    unitsDoneSoFar: Int = 0,
 ) {
-    client.forEachUnitGetDetailsPage(courseCatalog.modules, periodId, totalUnits) { _, module, _, _ ->
+    client.forEachUnitGetDetailsPage(courseCatalog.modules, periodId, totalUnits, unitsDoneSoFar) { _, module, _, _ ->
         with(module) {
             shortName = getText("Kurztext")
             longName = getText("Langtext")
@@ -76,9 +77,10 @@ private suspend fun addModulePartInfoToCourseCatalog(
     client: HIOClient,
     courseCatalog: CourseCatalog,
     periodId: Int,
-    totalUnits: Int
+    totalUnits: Int,
+    unitsDoneSoFar: Int = 0,
 ) {
-    client.forEachUnitGetDetailsPage(courseCatalog.moduleParts, periodId, totalUnits) { _, part, document, _ ->
+    client.forEachUnitGetDetailsPage(courseCatalog.moduleParts, periodId, totalUnits, unitsDoneSoFar) { _, part, document, _ ->
         with(part) {
             shortName = getText("Kurztext")
             longName = getText("Langtext")
