@@ -149,7 +149,7 @@ class HIOClient(val instance: String) {
         unitMap.entries.withIndex().forEach { (i, entry) ->
             val (unitId, unit) = entry
 
-            logger.info { "getting details page for unit $unitId (${i + 1}/$totalUnits | ${i + 1 * 100 / totalUnits} %)" }
+            logger.info { "getting details page for unit $unitId (${i + 1}/$totalUnits | ${(i + 1) * 100 / totalUnits} %)" }
 
             val (flowExecutionKey, document) = startFlow(
                 flow,
