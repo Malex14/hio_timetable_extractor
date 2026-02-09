@@ -245,7 +245,7 @@ private fun parseParallelGroupTitle(
             shortName = modulePart.shortName
         }
 
-        title.startsWith(modulePart.name) -> { // faculty inf without shortName
+        title.startsWith(modulePart.name) && isOnlyGroup -> { // faculty inf without shortName
             logger.debug { "inf wo: $title" }
 
             name = modulePart.name
