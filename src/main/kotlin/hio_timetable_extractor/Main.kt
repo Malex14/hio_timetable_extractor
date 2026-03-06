@@ -171,12 +171,12 @@ private fun parseParallelGroupDate(
             .let { if (it.size == 1) listOf(it[0], it[0]) else it }
 
         val roomLinkElem =
-            row.getElementsByClass("column9").first()?.lastElementChild()
+            row.getElementsByClass("column9").first()?.getElementsByTag("a")?.first()
         var roomId: Int? = null
         if (roomLinkElem != null) {
             val roomIdRegex = Regex("roomId=(\\d+)")
             roomId = roomIdRegex.find(roomLinkElem.attribute("href")?.value ?: "")?.groupValues[1]?.toInt()
-                ?: throw NoSuchElementException()
+                ?: throw NoSuchElementException("room id not found: ${roomLinkElem.attribute("href")?.value}")
             val roomStr = roomLinkElem.text()
             val roomStrRegex = Regex("(.*?) \\((.*?)(?: \\((.*?)\\))?\\)") // TODO: Ulmenliet ist anders!
             val groupValues = roomStrRegex.find(roomStr)?.groupValues ?: throw NoSuchElementException()
