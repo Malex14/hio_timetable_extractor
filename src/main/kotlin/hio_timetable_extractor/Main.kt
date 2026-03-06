@@ -19,24 +19,39 @@ suspend fun main() {
     val hioInstance = getEnvOrThrow("HIO_INSTANCE")
     val exportPath = getEnvAndMapOrThrow("EXPORT_DIR") { str -> Path(str).takeIf { it.exists() } }
     val period = getEnvAndMapOrThrow("PERIOD") { str -> str.toLongOrNull() }
-    val gitUrl = getEnvOrThrow("GIT_URL")
+    val gitDisabled = getEnvAndMap("GIT_DISABLED") { str -> str.toBoolean() } ?: false
+    val gitUrl = if (!gitDisabled) getEnvOrThrow("GIT_URL") else ""
+    val periodIdOverride = getEnvAndMap("PERIOD_ID") { str -> str.toIntOrNull() }
 
     val client = HIOClient(hioInstance)
-    initGit(exportPath, gitUrl)
+
+    if (!gitDisabled) {
+        initGit(exportPath, gitUrl)
+    }
+
     val scope = CoroutineScope(currentCoroutineContext())
     fixedRateTimer(name = "main loop", period = period * 1000 * 60 * 60) {
         scope.launch(Dispatchers.Default) {
             try {
                 val time = measureTime {
-                    val (_, tree) = getAndExpandCourseTree(client)
+                    val (legend, tree) = getAndExpandCourseTree(client, periodIdOverride)
+                    logger.info { "got course tree: $legend" }
                     val (periodId, courseCatalog) = parseTree(tree)
 
                     val totalUnits = courseCatalog.modules.size + courseCatalog.moduleParts.size
                     addModuleInfoToCourseCatalog(client, courseCatalog, periodId, totalUnits)
-                    addModulePartInfoToCourseCatalog(client, courseCatalog, periodId, totalUnits, courseCatalog.modules.size)
+                    addModulePartInfoToCourseCatalog(
+                        client,
+                        courseCatalog,
+                        periodId,
+                        totalUnits,
+                        courseCatalog.modules.size
+                    )
 
                     writeDirectoryAndEventFiles(exportPath, courseCatalog)
-                    pushDirToGit(exportPath)
+                    if (!gitDisabled) {
+                        pushDirToGit(exportPath)
+                    }
                 }
                 logger.info { "scraping done in $time" }
             } catch (e: Exception) {
@@ -80,7 +95,12 @@ private suspend fun addModulePartInfoToCourseCatalog(
     totalUnits: Int,
     unitsDoneSoFar: Int = 0,
 ) {
-    client.forEachUnitGetDetailsPage(courseCatalog.moduleParts, periodId, totalUnits, unitsDoneSoFar) { _, part, document, _ ->
+    client.forEachUnitGetDetailsPage(
+        courseCatalog.moduleParts,
+        periodId,
+        totalUnits,
+        unitsDoneSoFar
+    ) { _, part, document, _ ->
         with(part) {
             shortName = getText("Kurztext")
             longName = getText("Langtext")

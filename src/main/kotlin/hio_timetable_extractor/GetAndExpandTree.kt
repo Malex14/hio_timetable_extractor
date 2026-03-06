@@ -2,10 +2,14 @@ package de.mbehrmann.hio_timetable_extractor
 
 import org.jsoup.nodes.Element
 
-internal suspend fun getAndExpandCourseTree(client: HIOClient): Pair<String, Element> {
+internal suspend fun getAndExpandCourseTree(client: HIOClient, periodId: Int? = null): Pair<String, Element> {
     val flow = "showCourseCatalog-flow"
     val page = "cm/exa/coursecatalog/showCourseCatalog.xhtml"
-    val (flowExecutionKey) = client.startFlow(flow)
+    val (flowExecutionKey) = client.startFlow(flow, buildList {
+        if (periodId != null) {
+            add("periodId" to periodId.toString())
+        }
+    })
 
     suspend fun getTree(): Pair<String, Element> {
         val document = client.getPage(page, flow, flowExecutionKey)

@@ -20,7 +20,13 @@ fun getEnvOrThrow(name: String, allowEmpty: Boolean = false): String =
     getEnvAndMapOrThrow(name, allowEmpty) { it }
 
 fun <R> getEnvAndMapOrThrow(name: String, allowEmpty: Boolean = false, block: (String) -> R?): R =
+    getEnvAndMap(name, allowEmpty, block)
+        ?: throw IllegalArgumentException("'$name' environment variable is not set or invalid")
+
+fun getEnv(name: String, allowEmpty: Boolean = false): String? =
+    getEnvAndMap(name, allowEmpty) { it }
+
+fun <R> getEnvAndMap(name: String, allowEmpty: Boolean = false, block: (String) -> R?): R? =
     envs[name]
         .takeIf { !it.isNullOrBlank() || allowEmpty }
         ?.let(block)
-        ?: throw IllegalArgumentException("'$name' environment variable is not set or invalid")
