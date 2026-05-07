@@ -1,5 +1,6 @@
 package de.mbehrmann.hio_timetable_extractor
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import java.nio.file.Files
@@ -7,7 +8,11 @@ import java.nio.file.Path
 import java.time.LocalDateTime
 import java.util.*
 import kotlin.io.path.deleteIfExists
+import kotlin.io.path.exists
+import kotlin.io.path.isWritable
 import kotlin.io.path.name
+
+private val logger = KotlinLogging.logger {}
 
 @Serializable
 data class Event(
@@ -99,7 +104,13 @@ internal fun writeDirectoryAndEventFiles(path: Path, courseCatalog: CourseCatalo
     }
 
     for ((id, events) in events) {
-        Files.writeString(eventsDirPath.resolve("$id.json"), JSON_SERIALIZER.encodeToString(events))
+        val filePath = eventsDirPath.resolve("$id.json")
+        if (!filePath.exists() || filePath.isWritable()) {
+            logger.debug { "writing events for $id to ${filePath.fileName}" }
+            Files.writeString(filePath, JSON_SERIALIZER.encodeToString(events))
+        } else {
+            logger.info { "skipping writing events for $id since ${filePath.fileName} is not writable" }
+        }
     }
 }
 
