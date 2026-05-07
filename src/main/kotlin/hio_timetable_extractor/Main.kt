@@ -18,10 +18,10 @@ private val logger = KotlinLogging.logger {}
 suspend fun main() {
     val hioInstance = getEnvOrThrow("HIO_INSTANCE")
     val exportPath = getEnvAndMapOrThrow("EXPORT_DIR") { str -> Path(str).takeIf { it.exists() } }
-    val period = getEnvAndMapOrThrow("PERIOD") { str -> str.toLongOrNull() }
-    val gitDisabled = getEnvAndMap("GIT_DISABLED") { str -> str.toBoolean() } ?: false
+    val period = getEnvAndMapOrThrow("PERIOD") { it.toLongOrNull() }
+    val gitDisabled = getEnvAndMap("GIT_DISABLED") { it.toBoolean() } ?: false
     val gitUrl = if (!gitDisabled) getEnvOrThrow("GIT_URL") else ""
-    val periodIdOverride = getEnvAndMap("PERIOD_ID") { str -> str.toIntOrNull() }
+    val periodIdOverride = getEnvAndMap("PERIOD_ID") { it.toIntOrNull() }
 
     val client = HIOClient(hioInstance)
 
