@@ -1,7 +1,9 @@
+@file:Suppress("PropertyName")
+
 plugins {
     application
-    kotlin("jvm") version "2.2.0"
-    kotlin("plugin.serialization") version "2.2.0"
+    kotlin("jvm") version "2.4.0"
+    kotlin("plugin.serialization") version "2.4.0"
 }
 
 group = "de.mbehrmann"
@@ -12,6 +14,7 @@ val jsoup_version: String by project
 val kotlinx_serialization_json_version: String by project
 val slf4j_version: String by project
 val kotlin_logging_jvm_version: String by project
+val jspecify_version: String by project
 
 application {
     mainClass.set("de.mbehrmann.hio_timetable_extractor.MainKt")
@@ -22,6 +25,7 @@ repositories {
 }
 
 dependencies {
+    api("org.jspecify:jspecify:${jspecify_version}")
     testImplementation(kotlin("test"))
     implementation("io.ktor:ktor-client-core:${ktor_version}")
     implementation("io.ktor:ktor-client-cio:${ktor_version}")
