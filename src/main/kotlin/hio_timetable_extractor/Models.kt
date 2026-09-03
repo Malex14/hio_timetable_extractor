@@ -100,7 +100,7 @@ data class ParallelGroup(
     var shortName: String?,
     var name: String?,
     var groupNumber: Int?,
-    var sws: Double,
+    var sws: Double?,
     var language: String?,
     var instructors: List<String>?,
     var maxParticipantCount: Int?,

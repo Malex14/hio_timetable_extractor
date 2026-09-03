@@ -137,7 +137,7 @@ private suspend fun addModulePartInfoToCourseCatalog(
                 shortName,
                 name,
                 groupNumber,
-                getText("Semesterwochenstunden", labels)?.toDouble() ?: throw NoSuchElementException("sws not found"),
+                getText("Semesterwochenstunden", labels)?.toDouble(),
                 getText("Lehrsprache", labels),
                 labels["Verantwortliche/-r"]
                     ?.nextElementSibling()
