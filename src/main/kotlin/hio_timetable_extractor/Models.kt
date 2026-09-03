@@ -1,10 +1,13 @@
 package de.mbehrmann.hio_timetable_extractor
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
+
+private val logger = KotlinLogging.logger {}
 
 @Serializable
 data class CourseCatalog(
@@ -60,7 +63,7 @@ enum class ModuleType {
             "Pflicht" -> MANDATORY
             "Wahlpflicht" -> ELECTIVE
             else -> {
-                println("unknown module type: $str")
+                logger.warn { "unknown module type: $str" }
                 UNKNOWN
             }
         }
@@ -147,7 +150,7 @@ enum class ParallelGroupDateRhythm {
             "vierwöchentlich" -> QUAD_WEEKLY
             "Blockveranstaltung" -> BLOCK
             else -> {
-                println("unknown parallel group rhythm $str")
+                logger.warn { "unknown parallel group rhythm $str" }
                 UNKNOWN
             }
         }
@@ -202,7 +205,7 @@ enum class ModulePartType {
             "Praktikum" -> INTERNSHIP
             "Praxisgruppe" -> PRACTICE_GROUP
             else -> {
-                println("unknown module part type $str")
+                logger.warn { "unknown module part type $str" }
                 UNKNOWN
             }
         }
@@ -225,7 +228,7 @@ enum class ModuleInterval {
             "nur im Sommersemester" -> ONLY_DURING_SUMMER
             "jährlich" -> YEARLY
             else -> {
-                println("unknown module interval $str")
+                logger.warn {"unknown module interval $str" }
                 UNKNOWN
             }
         }

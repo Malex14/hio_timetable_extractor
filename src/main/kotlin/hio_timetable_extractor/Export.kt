@@ -97,7 +97,7 @@ internal fun writeDirectoryAndEventFiles(path: Path, courseCatalog: CourseCatalo
         it.asSequence().map { file -> file.name }.toSet() - events.keys.map { id -> "${id}.json" }.toSet()
     }
     if (invalidEventFiles.isNotEmpty()) {
-        println("Deleting old event files: ${invalidEventFiles.joinToString(", ")}")
+        logger.info { "Deleting old event files: ${invalidEventFiles.joinToString(", ")}" }
     }
     for (file in invalidEventFiles) {
         eventsDirPath.resolve(file).deleteIfExists()
@@ -123,11 +123,10 @@ private fun processModule(
     courseCatalog: CourseCatalog
 ) {
     val partsInModule = moduleParts.size
-    val partsInSubmodules = subModules.values.asSequence()
-        .map(::getSubmoduleModulePartCount).sum()
+    val partsInSubmodules = subModules.values.sumOf(::getSubmoduleModulePartCount)
 
     if (partsInModule + partsInSubmodules == 0) {
-        println("skipping module '$name' since it is empty")
+        logger.info { "skipping module '$name' since it is empty" }
         return
     }
 
@@ -205,8 +204,10 @@ private fun processModulePart(
             val partDirectory = Directory()
             for (group in modulePart.parallelGroups.sortedBy { it.shortName }) {
                 val id = generateId(modulePart, group)
-                val name = group.shortName?.let { "$it (${group.name})" } ?: group.name
-                ?: modulePart.name // TODO: schöner machen   // pg integrieren
+                val name = group.shortName
+                    ?.let { "$it (${group.name})" }
+                    ?: group.name
+                    ?: modulePart.name // TODO: schöner machen   // pg integrieren
 
                 partDirectory.events[id] = name
                 events[id] = generateEventsFromParallelGroup(group, name, courseCatalog)
@@ -266,44 +267,33 @@ private fun generateEventsFromParallelGroup(
     return events
 }
 
-private fun generateDescription(parallelGroup: ParallelGroup, pgDate: ParallelGroupDate): String {
-    return buildString {
-        if (pgDate.instructors.isNotEmpty()) {
-            append(
-                "Dozent${if (pgDate.instructors.size != 1) "en" else ""}: ${
-                    pgDate.instructors.joinToString(", ")
-                }\n"
-            )
-        } else if ((parallelGroup.instructors?.size ?: 0) > 0) {
-            append(
-                "Dozent${if (parallelGroup.instructors!!.size != 1) "en" else ""}: ${
-                    parallelGroup.instructors!!.joinToString(", ")
-                }\n"
-            )
-        }
-
-        if (parallelGroup.groupNumber != null) {
-            append("Parallelgruppe: ${parallelGroup.groupNumber}\n")
-        }
-
-        when {
-            pgDate.estimatedParticipantCount != null && parallelGroup.maxParticipantCount != null -> {
-                append("Teilnehmer/-innen: ${pgDate.estimatedParticipantCount} / ${parallelGroup.maxParticipantCount}\n")
-            }
-
-            pgDate.estimatedParticipantCount != null -> {
-                append("Teilnehmer/-innen: ${pgDate.estimatedParticipantCount}")
-            }
-
-            parallelGroup.maxParticipantCount != null -> {
-                append("Max. Anzahl von Teilnehmer/-innen: ${parallelGroup.maxParticipantCount}\n")
-            }
-        }
-
-        append("Rhythmus: ${pgDate.rhythm}\n")
-        append("\nOriginaler Titel: ${parallelGroup.originalTitle}")
+private fun generateDescription(parallelGroup: ParallelGroup, pgDate: ParallelGroupDate): String = buildString {
+    if (pgDate.instructors.isNotEmpty()) {
+        append(
+            "Dozent${if (pgDate.instructors.size != 1) "en" else ""}: ${
+                pgDate.instructors.joinToString(", ")
+            }\n"
+        )
+    } else if ((parallelGroup.instructors?.size ?: 0) > 0) {
+        append(
+            "Dozent${if (parallelGroup.instructors!!.size != 1) "en" else ""}: ${
+                parallelGroup.instructors!!.joinToString(", ")
+            }\n"
+        )
     }
+
+    parallelGroup.groupNumber?.let {
+        append("Parallelgruppe: ${it}\n")
+    }
+
+    if (pgDate.estimatedParticipantCount != null || parallelGroup.maxParticipantCount != null) {
+        append("Teilnehmer/-innen: ${pgDate.estimatedParticipantCount ?: "?"} / ${parallelGroup.maxParticipantCount ?: "?"}\n")
+    }
+
+    append("Rhythmus: ${pgDate.rhythm}\n")
+    append("\nOriginaler Titel: ${parallelGroup.originalTitle}")
 }
+
 
 private fun generateRoomString(room: Room): String = "${room.number}, ${room.address}"
 
